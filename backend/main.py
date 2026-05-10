@@ -5,9 +5,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
-
 # ─────────────────────────────────────────────
 # LOAD ENV
 # ─────────────────────────────────────────────
@@ -23,7 +20,7 @@ print("INDEX_NAME:", os.getenv("INDEX_NAME"))
 # FASTAPI INIT
 # ─────────────────────────────────────────────
 app = FastAPI(
-    title="Financial Intelligence RAG API",
+    title="Industrial Contract Intelligence API",
     version="1.0.0"
 )
 
@@ -37,7 +34,7 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 
     # Production Frontend
-    "https://financial-intelligence-rag.onrender.com",
+    "https://industrial-contract-intelligence-ai.onrender.com"
 ]
 
 app.add_middleware(
@@ -59,21 +56,6 @@ app.include_router(
 )
 
 # ─────────────────────────────────────────────
-# STATIC FRONTEND
-# ─────────────────────────────────────────────
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-ASSETS_DIR = os.path.join(STATIC_DIR, "assets")
-
-if os.path.exists(ASSETS_DIR):
-
-    app.mount(
-        "/assets",
-        StaticFiles(directory=ASSETS_DIR),
-        name="assets"
-    )
-
-# ─────────────────────────────────────────────
 # HEALTH CHECK
 # ─────────────────────────────────────────────
 @app.get("/health")
@@ -82,22 +64,3 @@ async def health_check():
     return {
         "status": "healthy"
     }
-
-# ─────────────────────────────────────────────
-# FRONTEND SERVING
-# ─────────────────────────────────────────────
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-
-    index_path = os.path.join(STATIC_DIR, "index.html")
-
-    if os.path.exists(index_path):
-
-        return FileResponse(index_path)
-
-    return JSONResponse(
-        status_code=404,
-        content={
-            "error": "Frontend build not found"
-        }
-    )
