@@ -5,6 +5,9 @@ import numpy as np
 
 from pinecone import Pinecone
 from rank_bm25 import BM25Okapi
+from backend.services.language_detector import (
+    detect_language
+)
 
 # ─────────────────────────────────────────────
 # INIT CLIENTS
@@ -31,7 +34,7 @@ def embed_query(query: str):
 
     response = co.embed(
         texts=[query],
-        model="embed-english-v3.0",
+        model="embed-multilingual-v3.0",
         input_type="search_query",
         embedding_types=["float"]
     )
@@ -108,16 +111,30 @@ def analyze_query(query):
 # ─────────────────────────────────────────────
 # VECTOR SEARCH
 # ─────────────────────────────────────────────
-def vector_search(query, top_k=20):
+def vector_search(query,language=None,top_k=20):
 
     start_time = time.time()
 
     query_embedding = embed_query(query)
+    print(f"Searching language: {language}")
 
+    "results = index.query(vector=query_embedding,top_k=top_k,include_metadata=True)"
+    
+    
+    query_params = {
+    "vector": query_embedding,
+    "top_k": top_k,
+    "include_metadata": True
+    }
+    
+    if language:
+    
+        query_params["filter"] = {
+            "language": language
+        }
+    
     results = index.query(
-        vector=query_embedding,
-        top_k=top_k,
-        include_metadata=True
+        **query_params
     )
 
     docs = []
@@ -320,7 +337,7 @@ def rerank_documents(
     response = co.rerank(
         query=query,
         documents=documents,
-        model="rerank-english-v3.0",
+        model="rerank-multilingual-v3.0",
         top_n=top_k
     )
 
@@ -423,6 +440,12 @@ def hybrid_retrieve(
 ):
 
     retrieval_start = time.time()
+    query_language = detect_language(
+    query
+    )
+    
+    print( f"Query language: " f"{query_language}"
+    )
 
     query_analysis = analyze_query(query)
 
@@ -430,11 +453,12 @@ def hybrid_retrieve(
     # STEP 1 — VECTOR SEARCH
     # ─────────────────────────────────────────
     vector_docs, vector_latency = (
-        vector_search(
-            query,
-            top_k=25
-        )
+    vector_search(
+        query=query,
+        language=query_language,
+        top_k=25
     )
+)
 
     # ─────────────────────────────────────────
     # STEP 2 — BM25 SEARCH

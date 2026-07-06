@@ -1,5 +1,8 @@
 import os
 from groq import Groq
+from backend.services.language_detector import (
+    detect_language
+)
 
 
 def generate_answer(query: str, docs: list):
@@ -12,6 +15,26 @@ def generate_answer(query: str, docs: list):
         raise ValueError("GROQ_API_KEY not found in environment variables")
 
     client = Groq(api_key=api_key)
+    query_language = detect_language(query)
+    
+    if query_language == "fr":
+
+        language_instruction = """
+        Answer entirely in French.
+        Keep technical contract terms in French.
+        """
+    
+    elif query_language == "es":
+    
+        language_instruction = """
+        Answer entirely in Spanish.
+        Keep technical contract terms in Spanish.
+        """
+    
+    else:
+        language_instruction = """Answer entirely in English."""
+    
+    
 
     # ─────────────────────────────────────────────
     # Clean + limit context (improved)
@@ -41,20 +64,24 @@ def generate_answer(query: str, docs: list):
     # ─────────────────────────────────────────────
     # SYSTEM PROMPT (Balanced — allows synthesis)
     # ─────────────────────────────────────────────
-    system_prompt = """
-You are an FP&A financial analyst assistant.
-
-RULES:
-1. Use ONLY the provided context as your primary source.
-2. You MAY summarize, combine, and interpret information from the context.
-3. DO NOT introduce facts that are not supported by the context.
-4. If the answer is partially available, provide the available information clearly.
-5. If the answer is completely missing, respond:
-   "The information is not available in the provided documents."
-6. Prefer structured output (bullets, tables) when useful.
-
-Be precise, grounded, and analytical.
-"""
+    system_prompt = f"""
+    You are an Industrial Contract Intelligence assistant.
+    
+    {language_instruction}
+    
+    RULES:
+    1. Use ONLY the provided context as your primary source.
+    2. You MAY summarize, combine, and interpret information from the context.
+    3. DO NOT introduce facts that are not supported by the context.
+    4. If the answer is partially available, provide the available information clearly.
+    5. If the answer is completely missing, respond:
+       "The information is not available in the provided documents."
+    6. Prefer structured output (bullets, tables) when useful.
+    7. Answer in the same language as the user's question.
+    8. Preserve contract terminology and clause numbering when available.
+    
+    Be precise, grounded, and analytical.
+    """
 
     user_prompt = f"""
 CONTEXT:

@@ -17,10 +17,10 @@ interface ChatPanelProps {
 }
 
 const STARTER_PROMPTS = [
-  'Explain the diesel escalation formula.?',
-  'Compare diesel escalation logic across contracts.?',
-  'Extract all KPI penalty clauses.?',
-  'Explain the escalation calculation methodology with examples.?',
+  "Summarize the key commercial terms of this contract",
+  "Explain the contract's price escalation mechanism",
+  "What are the volume commitments and recovery targets?",
+  "What performance KPIs and penalties should I monitor?",
 ];
 
 export function ChatPanel({

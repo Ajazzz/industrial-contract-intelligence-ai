@@ -1,52 +1,89 @@
 import os
-import re
-import fitz
-import cohere
 import time
 import uuid
+import cohere
 
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 
+from backend.services.document_classifier import (
+    classify_document
+)
+
+from backend.services.hybrid_chunker import (
+    hybrid_chunk_page
+)
+
 # ─────────────────────────────────────────────
 # LOAD ENV
 # ─────────────────────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
-ENV_PATH = os.path.join(BASE_DIR, "..", ".env")
+ENV_PATH = os.path.join(
+    BASE_DIR,
+    "..",
+    ".env"
+)
 
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = os.path.join(
+    BASE_DIR,
+    "data"
+)
 
 load_dotenv(ENV_PATH)
 
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-INDEX_NAME = os.getenv("INDEX_NAME")
-COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+PINECONE_API_KEY = os.getenv(
+    "PINECONE_API_KEY"
+)
+
+INDEX_NAME = os.getenv(
+    "INDEX_NAME"
+)
+
+COHERE_API_KEY = os.getenv(
+    "COHERE_API_KEY"
+)
 
 if not PINECONE_API_KEY:
-    raise ValueError("PINECONE_API_KEY missing")
+    raise ValueError(
+        "PINECONE_API_KEY missing"
+    )
 
 if not INDEX_NAME:
-    raise ValueError("INDEX_NAME missing")
+    raise ValueError(
+        "INDEX_NAME missing"
+    )
 
 if not COHERE_API_KEY:
-    raise ValueError("COHERE_API_KEY missing")
+    raise ValueError(
+        "COHERE_API_KEY missing"
+    )
 
 # ─────────────────────────────────────────────
 # INIT CLIENTS
 # ─────────────────────────────────────────────
-co = cohere.Client(COHERE_API_KEY)
+co = cohere.Client(
+    COHERE_API_KEY
+)
 
-pc = Pinecone(api_key=PINECONE_API_KEY)
+pc = Pinecone(
+    api_key=PINECONE_API_KEY
+)
 
 # ─────────────────────────────────────────────
 # CREATE / CONNECT INDEX
 # ─────────────────────────────────────────────
-existing_indexes = [i.name for i in pc.list_indexes()]
+existing_indexes = [
+    i.name for i in pc.list_indexes()
+]
 
 if INDEX_NAME not in existing_indexes:
 
-    print(f"Creating index: {INDEX_NAME}")
+    print(
+        f"Creating index: {INDEX_NAME}"
+    )
 
     pc.create_index(
         name=INDEX_NAME,
@@ -59,211 +96,90 @@ if INDEX_NAME not in existing_indexes:
     )
 
 else:
-    print(f"Using existing index: {INDEX_NAME}")
+
+    print(
+        f"Using existing index: {INDEX_NAME}"
+    )
 
 index = pc.Index(INDEX_NAME)
 
 # ─────────────────────────────────────────────
-# EXTRACT DOCUMENT METADATA
+# DOCUMENT METADATA
 # ─────────────────────────────────────────────
-def extract_document_metadata(filename):
+def extract_document_metadata(
+    filename
+):
 
     lower_name = filename.lower()
 
     metadata = {
-        "document_type": "industrial_contract",
-        "service_type": "general",
-        "contains_formula": False,
-        "contains_table": False,
-        "source": filename
+
+        "document_type":
+            "industrial_contract",
+
+        "industry":
+            "steel",
+
+        "service_type":
+            "general",
+
+        "source":
+            filename,
+
+        # NEW FIELDS
+        "contract_id":
+            "enviri_jsw_isa_v3",
+
+        "language":
+            "en"
     }
 
+    # ─────────────────────────────────────────
+    # LANGUAGE DETECTION
+    # ─────────────────────────────────────────
+    if "_fr_" in lower_name or "francais" in lower_name:
+
+        metadata["language"] = "fr"
+
+    elif "_es_" in lower_name or "espanol" in lower_name:
+
+        metadata["language"] = "es"
+
+    else:
+
+        metadata["language"] = "en"
+
+    # ─────────────────────────────────────────
     # SERVICE TYPE
+    # ─────────────────────────────────────────
     if "slag" in lower_name:
-        metadata["service_type"] = "slag_handling"
+
+        metadata["service_type"] = (
+            "slag_handling"
+        )
+
+    elif "furnace" in lower_name:
+
+        metadata["service_type"] = (
+            "furnace_installation"
+        )
+
+    elif "oxygen" in lower_name:
+
+        metadata["service_type"] = (
+            "oxygen_prs"
+        )
 
     elif "excavation" in lower_name:
-        metadata["service_type"] = "excavation"
 
-    elif "waste" in lower_name:
-        metadata["service_type"] = "waste_management"
-
-    elif "diesel" in lower_name:
-        metadata["service_type"] = "fuel_escalation"
-
-    # DOCUMENT TYPE
-    if "invoice" in lower_name:
-        metadata["document_type"] = "invoice_review"
-
-    elif "workbook" in lower_name:
-        metadata["document_type"] = "commercial_workbook"
-
-    elif "amendment" in lower_name:
-        metadata["document_type"] = "contract_amendment"
-
-    elif "agreement" in lower_name:
-        metadata["document_type"] = "service_agreement"
+        metadata["service_type"] = (
+            "excavation"
+        )
 
     return metadata
 
 # ─────────────────────────────────────────────
-# PDF EXTRACTION
-# ─────────────────────────────────────────────
-def extract_pages(pdf_path):
-
-    doc = fitz.open(pdf_path)
-
-    pages = []
-
-    for page_num, page in enumerate(doc):
-
-        text = page.get_text()
-
-        if text.strip():
-
-            pages.append({
-                "page": page_num + 1,
-                "text": text
-            })
-
-    return pages
-
-# ─────────────────────────────────────────────
-# CONTRACT CLAUSE SPLITTING
-# ─────────────────────────────────────────────
-CLAUSE_PATTERN = r"(\d+\.\d+|\d+\.)"
-
-def split_contract_sections(text):
-
-    paragraphs = text.split("\n")
-
-    sections = []
-
-    current_title = "GENERAL"
-
-    current_text = ""
-
-    for para in paragraphs:
-
-        para = para.strip()
-
-        if not para:
-            continue
-
-        # Detect clauses like:
-        # 1.
-        # 2.1
-        # 7.2 etc.
-        if re.match(CLAUSE_PATTERN, para):
-
-            if current_text:
-
-                sections.append({
-                    "section": current_title,
-                    "text": current_text.strip()
-                })
-
-            current_title = para[:80]
-            current_text = para
-
-        else:
-            current_text += "\n" + para
-
-    if current_text:
-
-        sections.append({
-            "section": current_title,
-            "text": current_text.strip()
-        })
-
-    return sections
-
-# ─────────────────────────────────────────────
-# RECURSIVE CHUNKING
-# ─────────────────────────────────────────────
-def recursive_chunk(
-    text,
-    chunk_size=350,
-    overlap=60
-):
-
-    words = text.split()
-
-    chunks = []
-
-    start = 0
-
-    while start < len(words):
-
-        end = start + chunk_size
-
-        chunk = " ".join(words[start:end])
-
-        chunks.append(chunk)
-
-        start += (chunk_size - overlap)
-
-    return chunks
-
-# ─────────────────────────────────────────────
-# CREATE CHUNKS
-# ─────────────────────────────────────────────
-def create_chunks(pages):
-
-    final_chunks = []
-
-    for page_data in pages:
-
-        page_num = page_data["page"]
-
-        text = page_data["text"]
-
-        sections = split_contract_sections(text)
-
-        for sec in sections:
-
-            section_name = sec["section"]
-
-            section_text = sec["text"]
-
-            contains_formula = any(
-                symbol in section_text
-                for symbol in ["=", "%", "/", "*"]
-            )
-
-            contains_table = (
-                "|" in section_text
-                or "\t" in section_text
-            )
-
-            if len(section_text.split()) <= 350:
-
-                final_chunks.append({
-                    "page": page_num,
-                    "section": section_name,
-                    "text": section_text,
-                    "contains_formula": contains_formula,
-                    "contains_table": contains_table
-                })
-
-            else:
-
-                sub_chunks = recursive_chunk(section_text)
-
-                for sub in sub_chunks:
-
-                    final_chunks.append({
-                        "page": page_num,
-                        "section": section_name,
-                        "text": sub,
-                        "contains_formula": contains_formula,
-                        "contains_table": contains_table
-                    })
-
-    return final_chunks
-
-# ─────────────────────────────────────────────
-# COHERE EMBEDDINGS
+# EMBEDDINGS
 # ─────────────────────────────────────────────
 def embed_batch(texts):
 
@@ -275,7 +191,7 @@ def embed_batch(texts):
 
             response = co.embed(
                 texts=texts,
-                model="embed-english-v3.0",
+                model="embed-multilingual-v3.0",
                 input_type="search_document",
                 embedding_types=["float"]
             )
@@ -284,80 +200,197 @@ def embed_batch(texts):
 
         except Exception as e:
 
-            print(f"Embedding error: {e}")
+            print(
+                f"Embedding error: {e}"
+            )
 
-            wait_time = (attempt + 1) * 10
+            wait_time = (
+                (attempt + 1) * 10
+            )
 
-            print(f"Retrying in {wait_time} sec...")
+            print(
+                f"Retrying in "
+                f"{wait_time} sec..."
+            )
 
             time.sleep(wait_time)
 
-    raise Exception("Failed after retries")
+    raise Exception(
+        "Embedding failed after retries"
+    )
 
 # ─────────────────────────────────────────────
 # INDEX SINGLE PDF
 # ─────────────────────────────────────────────
 def index_pdf(pdf_path):
 
-    filename = os.path.basename(pdf_path)
+    filename = os.path.basename(
+        pdf_path
+    )
 
-    print(f"\n📄 Processing: {filename}")
+    print(
+        f"\n📄 Processing: "
+        f"{filename}"
+    )
 
-    doc_metadata = extract_document_metadata(filename)
+    doc_metadata = (
+        extract_document_metadata(
+            filename
+        )
+    )
 
-    print(f"Metadata: {doc_metadata}")
+    print(
+        f"Metadata: "
+        f"{doc_metadata}"
+    )
 
-    print("Extracting PDF pages...")
+    # ─────────────────────────────────────────
+    # PAGE CLASSIFICATION
+    # ─────────────────────────────────────────
+    print(
+        "Classifying document pages..."
+    )
 
-    pages = extract_pages(pdf_path)
+    classified_pages = (
+        classify_document(
+            pdf_path
+        )
+    )
 
-    print("Creating contract-aware chunks...")
+    print(
+        f"Total classified pages: "
+        f"{len(classified_pages)}"
+    )
 
-    chunks = create_chunks(pages)
+    # ─────────────────────────────────────────
+    # HYBRID CHUNKING
+    # ─────────────────────────────────────────
+    print(
+        "Creating hybrid enterprise chunks..."
+    )
 
-    print(f"Total chunks: {len(chunks)}")
+    chunks = []
 
-    batch_size = 4
+    for page_data in classified_pages:
 
-    for i in range(0, len(chunks), batch_size):
+        page_chunks = (
+            hybrid_chunk_page(
+                page_data
+            )
+        )
 
-        batch = chunks[i:i + batch_size]
+        chunks.extend(page_chunks)
 
-        texts = [b["text"] for b in batch]
+    print(
+        f"Total hybrid chunks: "
+        f"{len(chunks)}"
+    )
 
-        embeddings = embed_batch(texts)
+    # ─────────────────────────────────────────
+    # UPSERT
+    # ─────────────────────────────────────────
+    batch_size = 2
+
+    for i in range(
+        0,
+        len(chunks),
+        batch_size
+    ):
+
+        batch = chunks[
+            i:i + batch_size
+        ]
+
+        texts = [
+            b["text"]
+            for b in batch
+        ]
+
+        embeddings = embed_batch(
+            texts
+        )
 
         vectors = []
 
-        for j, embedding in enumerate(embeddings):
+        for j, embedding in enumerate(
+            embeddings
+        ):
 
             chunk_data = batch[j]
 
             vectors.append({
-                "id": str(uuid.uuid4()),
-                "values": embedding,
+
+                "id":
+                    str(uuid.uuid4()),
+
+                "values":
+                    embedding,
+
                 "metadata": {
-                    "text": chunk_data["text"],
-                    "source": doc_metadata["source"],
-                    "document_type": doc_metadata["document_type"],
-                    "service_type": doc_metadata["service_type"],
-                    "page": chunk_data["page"],
-                    "section": chunk_data["section"],
-                    "contains_formula": chunk_data["contains_formula"],
-                    "contains_table": chunk_data["contains_table"]
+
+                    "text":
+                        chunk_data["text"],
+                
+                    "source":
+                        doc_metadata["source"],
+                
+                    "document_type":
+                        doc_metadata[
+                            "document_type"
+                        ],
+                
+                    "industry":
+                        doc_metadata[
+                            "industry"
+                        ],
+                
+                    "service_type":
+                        doc_metadata[
+                            "service_type"
+                        ],
+                
+                    # NEW
+                    "language":
+                        doc_metadata[
+                            "language"
+                        ],
+                
+                    # NEW
+                    "contract_id":
+                        doc_metadata[
+                            "contract_id"
+                        ],
+                
+                    "page":
+                        chunk_data["page"],
+                
+                    "page_type":
+                        chunk_data[
+                            "page_type"
+                        ],
+                
+                    "chunk_type":
+                        chunk_data[
+                            "chunk_type"
+                        ]
                 }
             })
 
-        index.upsert(vectors=vectors)
+        index.upsert(
+            vectors=vectors
+        )
 
         print(
             f"Uploaded batch "
             f"{i // batch_size + 1}"
         )
 
-        time.sleep(5)
+        time.sleep(3)
 
-    print(f"✅ Finished indexing: {filename}")
+    print(
+        f"✅ Finished indexing: "
+        f"{filename}"
+    )
 
 # ─────────────────────────────────────────────
 # INDEX ALL PDFs
@@ -367,29 +400,44 @@ def index_all_pdfs():
     if not os.path.exists(DATA_DIR):
 
         raise FileNotFoundError(
-            f"Data folder missing: {DATA_DIR}"
+            f"Data folder missing: "
+            f"{DATA_DIR}"
         )
 
     pdf_files = [
-        f for f in os.listdir(DATA_DIR)
-        if f.lower().endswith(".pdf")
+
+        f for f in os.listdir(
+            DATA_DIR
+        )
+
+        if f.lower().endswith(
+            ".pdf"
+        )
     ]
 
     if not pdf_files:
 
         raise FileNotFoundError(
-            "No PDF files found in data folder"
+            "No PDF files found"
         )
 
-    print(f"\nFound {len(pdf_files)} PDF files")
+    print(
+        f"\nFound "
+        f"{len(pdf_files)} PDFs"
+    )
 
     for pdf_file in pdf_files:
 
-        pdf_path = os.path.join(DATA_DIR, pdf_file)
+        pdf_path = os.path.join(
+            DATA_DIR,
+            pdf_file
+        )
 
         index_pdf(pdf_path)
 
-    print("\n🎉 ALL DOCUMENTS INDEXED")
+    print(
+        "\n🎉 ALL DOCUMENTS INDEXED"
+    )
 
 # ─────────────────────────────────────────────
 # MAIN

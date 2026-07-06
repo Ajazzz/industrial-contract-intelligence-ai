@@ -414,10 +414,10 @@ def run_rag_pipeline(query: str):
             ),
 
             "embeddingModel":
-                "embed-english-v3.0",
+                "embed-multilingual-v3.0",
 
             "rerankModel":
-                "rerank-english-v3.0"
+                "rerank-multilingual-v3.0"
         },
 
         "latencyMs": total_latency,
@@ -534,10 +534,10 @@ def stream_rag_pipeline(query: str):
                     ),
 
                 "embeddingModel":
-                    "embed-english-v3.0",
+                    "embed-multilingual-v3.0",
 
                 "rerankModel":
-                    "rerank-english-v3.0"
+                    "rerank-multilingual-v3.0"
             },
 
             "latencyMs": total_latency,
