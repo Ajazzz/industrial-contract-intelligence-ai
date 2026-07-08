@@ -76,8 +76,8 @@ export function Sidebar({
         <div className="flex items-center gap-2.5">
           <Brain size={20} className="text-emerald-400" />
           <div>
-            <div className="text-sm font-semibold text-slate-100 leading-tight">Industrial Contract Intelligence</div>
-            <div className="text-[10px] font-mono text-emerald-500 tracking-wider uppercase">AI · Enterprise</div>
+            <div className="text-sm font-semibold text-slate-100 leading-tight">Enviri-Contracts Desk</div>
+            <div className="text-[10px] font-mono text-emerald-500 tracking-wider uppercase">AI · RAG Application</div>
           </div>
         </div>
         <button
@@ -172,7 +172,7 @@ export function Sidebar({
               <Skeleton className="h-8 w-full" />
             </>
           ) : collections.length === 0 ? (
-            <p className="text-xs text-slate-600 px-1">Price escalation</p>
+            <p className="text-xs text-slate-600 px-1">Enviri Contracts (English, Spanish & French)</p>
           ) : (
             collections.map(col => (
               <button
