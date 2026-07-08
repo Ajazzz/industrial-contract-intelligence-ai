@@ -106,48 +106,85 @@ index = pc.Index(INDEX_NAME)
 # ─────────────────────────────────────────────
 # DOCUMENT METADATA
 # ─────────────────────────────────────────────
-def extract_document_metadata(
-    filename
-):
+def extract_document_metadata(filename):
 
     lower_name = filename.lower()
 
     metadata = {
 
-        "document_type":
-            "industrial_contract",
+        "document_type": "industrial_contract",
 
-        "industry":
-            "steel",
+        "industry": "steel",
 
-        "service_type":
-            "general",
+        "service_type": "general",
 
-        "source":
-            filename,
+        "source": filename,
 
-        # NEW FIELDS
-        "contract_id":
-            "enviri_jsw_isa_v3",
+        # Enterprise Metadata
+        "contract_id": "",
 
-        "language":
-            "en"
+        "contract_name": "",
+
+        "customer": "",
+
+        "language": "",
+
+        "country": "India"
     }
+
+    # --------------------------------------------------
+    # CONTRACT : KBC
+    # --------------------------------------------------
+    if "kbc" in lower_name:
+
+        metadata["contract_id"] = "enviri_kbc"
+        metadata["contract_name"] = "Enviri KBC"
+        metadata["customer"] = "KBC"
+        metadata["language"] = "English"
+
+    # --------------------------------------------------
+    # CONTRACT : BBC
+    # --------------------------------------------------
+    elif "bbc" in lower_name:
+
+        metadata["contract_id"] = "enviri_bbc"
+        metadata["contract_name"] = "Enviri BBC"
+        metadata["customer"] = "BBC"
+        metadata["language"] = "French"
+
+    # --------------------------------------------------
+    # CONTRACT : SS
+    # --------------------------------------------------
+    elif "ss" in lower_name:
+
+        metadata["contract_id"] = "enviri_ss"
+        metadata["contract_name"] = "Enviri SS"
+        metadata["customer"] = "SS"
+        metadata["language"] = "Spanish"
+
+    else:
+
+        metadata["contract_id"] = "unknown_contract"
+        metadata["contract_name"] = "Unknown Contract"
+        metadata["customer"] = "Unknown"
+        metadata["language"] = "Unknown"
+
+    return metadata
 
     # ─────────────────────────────────────────
     # LANGUAGE DETECTION
     # ─────────────────────────────────────────
     if "_fr_" in lower_name or "francais" in lower_name:
-
-        metadata["language"] = "fr"
-
+    
+        metadata["language"] = "French"
+    
     elif "_es_" in lower_name or "espanol" in lower_name:
-
-        metadata["language"] = "es"
-
+    
+        metadata["language"] = "Spanish"
+    
     else:
-
-        metadata["language"] = "en"
+    
+        metadata["language"] = "English"
 
     # ─────────────────────────────────────────
     # SERVICE TYPE
@@ -349,17 +386,10 @@ def index_pdf(pdf_path):
                             "service_type"
                         ],
                 
-                    # NEW
-                    "language":
-                        doc_metadata[
-                            "language"
-                        ],
+                    
                 
                     # NEW
-                    "contract_id":
-                        doc_metadata[
-                            "contract_id"
-                        ],
+                  
                 
                     "page":
                         chunk_data["page"],
@@ -372,7 +402,22 @@ def index_pdf(pdf_path):
                     "chunk_type":
                         chunk_data[
                             "chunk_type"
-                        ]
+                        ],
+                        
+                    "contract_id":
+                        doc_metadata["contract_id"],
+
+                    "contract_name":
+                        doc_metadata["contract_name"],
+
+                    "customer":
+                        doc_metadata["customer"],
+
+                    "language":
+                        doc_metadata["language"],
+
+                    "country":
+                        doc_metadata["country"]
                 }
             })
 

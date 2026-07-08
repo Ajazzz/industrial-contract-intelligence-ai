@@ -2,6 +2,8 @@ import { Bot, User, Clock, Cpu, AlertCircle } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import type { Message } from '../../types';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MessageBubbleProps {
   message: Message;
@@ -91,9 +93,11 @@ export function MessageBubble({
 
           ) : (
 
-            <p className="whitespace-pre-wrap">
-              {message.content}
-            </p>
+            <div className="prose prose-invert max-w-none prose-sm">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
 
           )}
 

@@ -111,32 +111,22 @@ def analyze_query(query):
 # ─────────────────────────────────────────────
 # VECTOR SEARCH
 # ─────────────────────────────────────────────
-def vector_search(query,language=None,top_k=20):
+def vector_search(query,top_k=20):
 
     start_time = time.time()
 
     query_embedding = embed_query(query)
-    print(f"Searching language: {language}")
+    
 
-    "results = index.query(vector=query_embedding,top_k=top_k,include_metadata=True)"
     
     
-    query_params = {
-    "vector": query_embedding,
-    "top_k": top_k,
-    "include_metadata": True
-    }
-    
-    if language:
-    
-        query_params["filter"] = {
-            "language": language
-        }
     
     results = index.query(
-        **query_params
+    vector=query_embedding,
+    top_k=top_k,
+    include_metadata=True
     )
-
+    
     docs = []
 
     for match in results.get("matches", []):
@@ -190,7 +180,32 @@ def vector_search(query,language=None,top_k=20):
 
                 "dense_score": float(
                     match.get("score", 0)
-                )
+                ),
+                
+                "contract_id": metadata.get(
+                    "contract_id",
+                    "Unknown"
+                ),
+                
+                "contract_name": metadata.get(
+                    "contract_name",
+                    "Unknown Contract"
+                ),
+                
+                "customer": metadata.get(
+                    "customer",
+                    "Unknown"
+                ),
+                
+                "language": metadata.get(
+                    "language",
+                    "Unknown"
+                ),
+                
+                "country": metadata.get(
+                    "country",
+                    "Unknown"
+                ),
             }
         })
 
@@ -455,7 +470,7 @@ def hybrid_retrieve(
     vector_docs, vector_latency = (
     vector_search(
         query=query,
-        language=query_language,
+        
         top_k=25
     )
 )
@@ -548,3 +563,76 @@ def hybrid_retrieve(
         "retrieval_debug": retrieval_debug,
         "latency": latency
     }
+
+
+def comparison_vector_search(query, contracts):
+
+    docs = []
+
+    for contract in contracts:
+
+        query_embedding = embed_query(query)
+
+        results = index.query(
+
+            vector=query_embedding,
+
+            top_k=5,
+
+            include_metadata=True,
+
+            filter={
+                "contract_name": {
+                    "$eq": contract
+                }
+            }
+        )
+
+        for match in results.get("matches", []):
+
+            metadata = match.get("metadata", {}) or {}
+
+            docs.append({
+
+                "content": metadata.get("text", ""),
+
+                "metadata": metadata
+
+            })
+
+    return docs
+
+def comparison_retrieve(query, contracts):
+
+    all_docs = []
+
+    for contract in contracts:
+
+        print(f"Retrieving contract: {contract}")
+
+        query_embedding = embed_query(query)
+
+        results = index.query(
+            vector=query_embedding,
+            top_k=5,
+            include_metadata=True,
+            filter={
+                "contract_name": {
+                    "$eq": contract
+                }
+            }
+        )
+
+        for match in results.get("matches", []):
+
+            metadata = match.get("metadata", {}) or {}
+
+            all_docs.append({
+
+                "content": metadata.get("text", ""),
+
+                "metadata": metadata
+
+            })
+
+    return all_docs

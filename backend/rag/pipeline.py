@@ -1,8 +1,14 @@
 import os
 import json
 import time
-
+from backend.services.retrieval.comparison import (
+    group_documents_by_contract,
+    build_comparison_context,
+)
 from groq import Groq
+from backend.services.context_builder import build_context
+from backend.services.prompt_builder import build_prompt
+from backend.services.query_analyzer import analyze_query
 
 from backend.services.retriever import hybrid_retrieve
 
@@ -21,57 +27,57 @@ MODEL_NAME = "llama-3.3-70b-versatile"
 # ─────────────────────────────────────────────
 # BUILD CONTEXT
 # ─────────────────────────────────────────────
-def build_context(docs):
+# def build_context(docs):
 
-    context_parts = []
+#     context_parts = []
 
-    for i, d in enumerate(docs):
+#     for i, d in enumerate(docs):
 
-        metadata = d.get("metadata", {})
+#         metadata = d.get("metadata", {})
 
-        source = metadata.get("source", "Unknown")
+#         source = metadata.get("source", "Unknown")
 
-        page = metadata.get("page", 1)
+#         page = metadata.get("page", 1)
 
-        section = metadata.get("section", "GENERAL")
+#         section = metadata.get("section", "GENERAL")
 
-        service_type = metadata.get(
-            "service_type",
-            "general"
-        )
+#         service_type = metadata.get(
+#             "service_type",
+#             "general"
+#         )
 
-        contains_formula = metadata.get(
-            "contains_formula",
-            False
-        )
+#         contains_formula = metadata.get(
+#             "contains_formula",
+#             False
+#         )
 
-        contains_table = metadata.get(
-            "contains_table",
-            False
-        )
+#         contains_table = metadata.get(
+#             "contains_table",
+#             False
+#         )
 
-        content = d.get("content", "").strip()
+#         content = d.get("content", "").strip()
 
-        if not content:
-            continue
+#         if not content:
+#             continue
 
-        context_parts.append(
-            f"""
-SOURCE {i+1}
+#         context_parts.append(
+#             f"""
+# SOURCE {i+1}
 
-Document: {source}
-Page: {page}
-Section: {section}
-Service Type: {service_type}
-Contains Formula: {contains_formula}
-Contains Table: {contains_table}
+# Document: {source}
+# Page: {page}
+# Section: {section}
+# Service Type: {service_type}
+# Contains Formula: {contains_formula}
+# Contains Table: {contains_table}
 
-CONTENT:
-{content}
-"""
-        )
+# CONTENT:
+# {content}
+# """
+#         )
 
-    return "\n\n".join(context_parts)
+#     return "\n\n".join(context_parts)
 
 # ─────────────────────────────────────────────
 # FORMAT SOURCES
@@ -253,69 +259,69 @@ def build_query_analysis(query: str):
 # ─────────────────────────────────────────────
 # BUILD PROMPT
 # ─────────────────────────────────────────────
-def build_prompt(query, context):
+# def build_prompt(query, context):
 
-    return f"""
-You are a senior industrial contracts analyst
-specialized in:
+#     return f"""
+# You are a senior industrial contracts analyst
+# specialized in:
 
-- steel plant operations
-- industrial service agreements
-- diesel escalation mechanisms
-- KPI/SLA analysis
-- excavation contracts
-- slag handling operations
-- commercial contract reviews
-- invoice escalation analysis
-- industrial pricing models
+# - steel plant operations
+# - industrial service agreements
+# - diesel escalation mechanisms
+# - KPI/SLA analysis
+# - excavation contracts
+# - slag handling operations
+# - commercial contract reviews
+# - invoice escalation analysis
+# - industrial pricing models
 
-You are assisting operations, procurement,
-commercial, and finance teams.
+# You are assisting operations, procurement,
+# commercial, and finance teams.
 
-IMPORTANT RULES:
+# IMPORTANT RULES:
 
-1. Answer ONLY using the provided context.
+# 1. Answer ONLY using the provided context.
 
-2. Do NOT hallucinate or invent clauses.
+# 2. Do NOT hallucinate or invent clauses.
 
-3. If information is missing, say:
-"I could not find that information in the documents."
+# 3. If information is missing, say:
+# "I could not find that information in the documents."
 
-4. When formulas exist:
-- explain them clearly
-- describe escalation logic
-- explain business impact
+# 4. When formulas exist:
+# - explain them clearly
+# - describe escalation logic
+# - explain business impact
 
-5. When tables exist:
-- summarize operational insights
-- explain rate changes
-- explain KPI implications
+# 5. When tables exist:
+# - summarize operational insights
+# - explain rate changes
+# - explain KPI implications
 
-6. Prefer:
-- structured explanations
-- bullet points
-- clause references
-- operational reasoning
+# 6. Prefer:
+# - structured explanations
+# - bullet points
+# - clause references
+# - operational reasoning
 
-7. If the question relates to:
-- diesel escalation
-- CPI adjustments
-- KPI penalties
-- invoice deductions
-- equipment utilization
+# 7. If the question relates to:
+# - diesel escalation
+# - CPI adjustments
+# - KPI penalties
+# - invoice deductions
+# - equipment utilization
 
-then explain:
-- trigger conditions
-- escalation applicability
-- operational impact
-- commercial implications
+# then explain:
+# - trigger conditions
+# - escalation applicability
+# - operational impact
+# - commercial implications
 
-CONTEXT:
-{context}
+# CONTEXT:
+# {context}
 
-QUESTION:
-{query}
-"""
+# QUESTION:
+# {query}
+# """
 
 # ─────────────────────────────────────────────
 # NON-STREAMING PIPELINE
@@ -326,6 +332,8 @@ def run_rag_pipeline(query: str):
 
     # RETRIEVAL
     retrieval_result = hybrid_retrieve(query)
+    
+    
 
     docs = retrieval_result["documents"]
 
@@ -341,7 +349,15 @@ def run_rag_pipeline(query: str):
     context = build_context(docs)
 
     # PROMPT
-    prompt = build_prompt(query, context)
+    #prompt = build_prompt(query, context)
+    
+    analysis = analyze_query(query)
+
+    prompt = build_prompt(
+        analysis=analysis,
+        context=context,
+        query=query
+)
 
     generation_start = time.time()
 
@@ -434,6 +450,8 @@ def stream_rag_pipeline(query: str):
 
     total_start = time.time()
 
+    analysis = analyze_query(query)
+
     retrieval_result = hybrid_retrieve(query)
 
     docs = retrieval_result["documents"]
@@ -446,7 +464,23 @@ def stream_rag_pipeline(query: str):
         "latency"
     ]
 
-    context = build_context(docs)
+    if analysis.intent == "comparison":
+
+        grouped_docs = group_documents_by_contract(
+            docs
+        )
+
+        context = build_comparison_context(
+            grouped_docs
+        )
+
+    else:
+
+        context = build_context(
+            docs
+        )
+    
+    
 
     prompt = build_prompt(query, context)
 
