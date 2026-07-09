@@ -433,7 +433,10 @@ def run_rag_pipeline(query: str):
                 "embed-multilingual-v3.0",
 
             "rerankModel":
-                "rerank-multilingual-v3.0"
+                "rerank-multilingual-v3.0",
+                
+            "model":
+                "llama-3.3-70b-versatile"
         },
 
         "latencyMs": total_latency,

@@ -48,12 +48,16 @@ export function RetrievalDebugPanel({ debug }: RetrievalDebugPanelProps) {
         <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">Models</div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Embedding</span>
+            <span className="text-xs text-slate-500">Embedding Model</span>
             <Badge variant="slate" size="xs">{debug.embeddingModel}</Badge>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500">Reranker</span>
             <Badge variant="blue" size="xs">{debug.rerankModel}</Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500">Language Model</span>
+            <Badge variant="blue" size="xs">{debug.model}</Badge>
           </div>
         </div>
       </div>

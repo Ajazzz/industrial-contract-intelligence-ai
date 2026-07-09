@@ -172,7 +172,10 @@ export function Sidebar({
               <Skeleton className="h-8 w-full" />
             </>
           ) : collections.length === 0 ? (
-            <p className="text-xs text-slate-600 px-1">Enviri Contracts (English, Spanish & French)</p>
+            <p className="text-xs text-slate-600 px-1"><p>Enviri Contracts</p>
+              <p>• KBC STEEL LIMITED – English</p>
+              <p>• SUPER STEEL LIMITED – Spanish</p>
+              <p>• BBC STEEL LIMITED – French</p></p>
           ) : (
             collections.map(col => (
               <button

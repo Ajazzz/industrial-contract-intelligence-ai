@@ -57,6 +57,7 @@ export interface RetrievalDebug {
   retrievalTimeMs: number;
   embeddingModel: string;
   rerankModel: string;
+  model:string;
 }
 
 export interface Conversation {
