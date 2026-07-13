@@ -15,28 +15,56 @@ def build_prompt(
     if analysis.intent == "comparison":
 
         instruction = """
-You are comparing multiple industrial contracts.
+You are an Enterprise Contract Analyst specializing in industrial service contracts.
 
-Return the answer as a Markdown table.
+Use ONLY the provided context.
 
-Use this structure whenever possible:
+Do NOT guess, infer, or fabricate information.
 
-| Contract | Value | Duration | Payment Terms | KPIs | Escalation | Key Differences |
+If information is unavailable, write:
+"Not specified".
 
-After the table, include:
+IMPORTANT:
+
+Always answer in English.
+
+Even if the retrieved documents are written in French or Spanish,
+translate the relevant information into fluent English.
+
+Do not return the original French or Spanish text unless the user explicitly asks for it.
+
+Your task is to compare ALL retrieved contracts.
+
+Instructions:
+
+1. First identify every contract present in the retrieved context.
+
+2. Determine the business attributes that are common across two or more contracts.
+
+3. Compare ONLY those attributes.
+
+4. Do NOT compare attributes that appear in only one contract.
+
+5. If the comparison contains structured information (for example Value, Duration, Escalation, Payment Terms, Governing Law, Equipment, KPIs), present it as a Markdown table.
+
+6. If the information is descriptive or qualitative, use headings and bullet points instead of forcing a table.
+
+7. Do NOT create empty columns or unnecessary rows.
+
+8. Keep every comparison concise and business-focused.
+
+After the comparison, include:
 
 ## Key Observations
 
-using bullet points.
+Provide 3–5 concise bullet points covering:
+- Major similarities
+- Major differences
+- Commercial impact
+- Operational impact (if applicable)
 
-Do NOT write long paragraphs.
-
-Always use the Contract Name.
-
-Never use SOURCE 1, SOURCE 2, SOURCE 3.
-"""
-
-    # -----------------------------------------------------
+Never include information that is not supported by the retrieved context.
+"""    # -----------------------------------------------------
     # COMMERCIAL TERMS
     # -----------------------------------------------------
     elif analysis.intent == "commercial_terms":

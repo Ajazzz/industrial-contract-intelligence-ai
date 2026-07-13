@@ -18,6 +18,8 @@ class QueryAnalysis:
 
 
 def analyze_query(query: str) -> QueryAnalysis:
+    
+    print(">>> NEW QUERY ANALYZER IS RUNNING <<<")
 
     q = query.lower()
 
@@ -28,13 +30,13 @@ def analyze_query(query: str) -> QueryAnalysis:
     # -----------------------------------------
 
     if "kbc" in q:
-        contracts.append("Enviri KBC")
+        contracts.append("enviri_kbc")
 
     if "bbc" in q:
-        contracts.append("Enviri BBC")
-
+        contracts.append("enviri_bbc")
+    
     if "ss" in q:
-        contracts.append("Enviri SS")
+        contracts.append("enviri_ss")
 
     compare_all = False
 
@@ -42,15 +44,22 @@ def analyze_query(query: str) -> QueryAnalysis:
         "all contracts" in q
         or "all three" in q
         or "compare all" in q
+        
+        or "all contract" in q
+        or "every contract" in q
+        or "across all contracts" in q
+        or "all agreements" in q
+        or "across all agreements" in q
+        or "Compare all contracts" in q
     ):
 
         compare_all = True
 
         contracts = [
-            "Enviri KBC",
-            "Enviri BBC",
-            "Enviri SS"
-        ]
+            "enviri_kbc",
+        "enviri_bbc",
+        "enviri_ss"
+]
 
     # -----------------------------------------
     # INTENT
@@ -73,6 +82,7 @@ def analyze_query(query: str) -> QueryAnalysis:
     elif any(word in q for word in [
         "summary",
         "summarize",
+        "summarise",
         "overview"
     ]):
 
@@ -152,15 +162,15 @@ def analyze_query(query: str) -> QueryAnalysis:
 
         output_format = "summary"
 
-    return QueryAnalysis(
-
-        intent=intent,
-
-        topic=topic,
-
-        contracts=contracts,
-
-        compare_all=compare_all,
-
-        output_format=output_format
+    result = QueryAnalysis(
+    intent=intent,
+    topic=topic,
+    contracts=contracts,
+    compare_all=compare_all,
+    output_format=output_format
     )
+    
+    print("RETURNING FROM QUERY_ANALYZER:", result)
+    print("RETURN TYPE:", type(result))
+    
+    return result

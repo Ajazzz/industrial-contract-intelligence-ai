@@ -2,6 +2,7 @@ import os
 import time
 import cohere
 import numpy as np
+from backend.services.query_analyzer import analyze_query
 
 from pinecone import Pinecone
 from rank_bm25 import BM25Okapi
@@ -44,7 +45,7 @@ def embed_query(query: str):
 # ─────────────────────────────────────────────
 # QUERY ANALYSIS
 # ─────────────────────────────────────────────
-def analyze_query(query):
+def analyze_metadata_boost(query):
 
     query_lower = query.lower()
 
@@ -111,7 +112,7 @@ def analyze_query(query):
 # ─────────────────────────────────────────────
 # VECTOR SEARCH
 # ─────────────────────────────────────────────
-def vector_search(query,top_k=20):
+def vector_search(query,language=None, contract_id=None,top_k=20):
 
     start_time = time.time()
 
@@ -121,12 +122,45 @@ def vector_search(query,top_k=20):
     
     
     
-    results = index.query(
-    vector=query_embedding,
-    top_k=top_k,
-    include_metadata=True
-    )
+    # results = index.query(
+    # vector=query_embedding,
+    # top_k=top_k,
+    # include_metadata=True
+    # )
     
+    
+    query_params = {
+
+    "vector": query_embedding,
+
+    "top_k": top_k,
+
+    "include_metadata": True
+
+            }
+            
+    filters = {}
+            
+    if language:
+    
+        filters["language"] = {
+            "$eq": language
+        }
+    
+    if contract_id:
+    
+        filters["contract_id"] = {
+            "$eq": contract_id
+        }
+    
+    if filters:
+    
+        query_params["filter"] = filters
+    
+    results = index.query(
+        **query_params
+    )
+        
     docs = []
 
     for match in results.get("matches", []):
@@ -462,18 +496,54 @@ def hybrid_retrieve(
     print( f"Query language: " f"{query_language}"
     )
 
+    # -----------------------------------------
+    # QUERY ANALYSIS
+    # -----------------------------------------
     query_analysis = analyze_query(query)
+    
+    print("Query Analysis:", query_analysis)
+    
+    # -----------------------------------------
+    # METADATA BOOST ANALYSIS
+    # -----------------------------------------
+    metadata_analysis = analyze_metadata_boost(query)
+    
+    print("Metadata Analysis:", metadata_analysis)
+    
+    # print(analyze_query)
+    # print(analyze_query.__code__.co_filename)
+    # print(type(query_analysis))
+    # print(query_analysis)
+    
+    # print("Function being called:", analyze_query.__module__)
+    # print("Type:", type(query_analysis))
+    # print("Value:", query_analysis)
 
     # ─────────────────────────────────────────
     # STEP 1 — VECTOR SEARCH
     # ─────────────────────────────────────────
-    vector_docs, vector_latency = (
-    vector_search(
-        query=query,
-        
-        top_k=25
-    )
-)
+    
+    if query_analysis.compare_all:
+
+        print("\nUsing Comparison Retrieval...\n")
+
+        vector_docs, vector_latency = comparison_vector_search(
+    
+            query=query,
+    
+            contract_ids=query_analysis.contracts
+    
+        )
+
+    else:
+    
+        vector_docs, vector_latency = vector_search(
+    
+            query=query,
+    
+            top_k=25
+    
+        )
 
     # ─────────────────────────────────────────
     # STEP 2 — BM25 SEARCH
@@ -491,7 +561,7 @@ def hybrid_retrieve(
     # ─────────────────────────────────────────
     boosted_docs = (
         apply_metadata_boosting(
-            query_analysis,
+            metadata_analysis,
             bm25_docs
         )
     )
@@ -556,7 +626,25 @@ def hybrid_retrieve(
 
         "retrieval_total_ms":
             total_latency
+            
+            
     }
+        
+        
+    print("\n========== Retrieved Documents ==========")
+
+    for i, doc in enumerate(reranked_docs, 1):
+
+        md = doc.get("metadata", {})
+
+        print(
+            f"{i}. "
+            f"{md.get('contract_name')} | "
+            f"{md.get('language')} | "
+            f"Page {md.get('page')}"
+        )
+
+    print("=========================================\n")
 
     return {
         "documents": reranked_docs,
@@ -565,42 +653,40 @@ def hybrid_retrieve(
     }
 
 
-def comparison_vector_search(query, contracts):
+def comparison_vector_search(query, contract_ids):
 
-    docs = []
+    
 
-    for contract in contracts:
+    all_docs = []
 
-        query_embedding = embed_query(query)
+    total_latency = 0
 
-        results = index.query(
+    for contract_id in contract_ids:
 
-            vector=query_embedding,
+        docs, latency = vector_search(
 
-            top_k=5,
+            query=query,
 
-            include_metadata=True,
+            contract_id=contract_id,
 
-            filter={
-                "contract_name": {
-                    "$eq": contract
-                }
-            }
+            top_k=5
+
         )
 
-        for match in results.get("matches", []):
+        total_latency += latency
 
-            metadata = match.get("metadata", {}) or {}
+        print(
+            f"Retrieved {len(docs)} chunks from {contract_id}"
+        )
 
-            docs.append({
+        all_docs.extend(docs)
 
-                "content": metadata.get("text", ""),
+    print(
+        f"\nTotal comparison chunks: {len(all_docs)}\n"
+    )
 
-                "metadata": metadata
+    return all_docs, total_latency
 
-            })
-
-    return docs
 
 def comparison_retrieve(query, contracts):
 
@@ -636,3 +722,5 @@ def comparison_retrieve(query, contracts):
             })
 
     return all_docs
+
+

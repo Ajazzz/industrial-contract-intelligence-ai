@@ -129,7 +129,9 @@ def extract_document_metadata(filename):
 
         "language": "",
 
-        "country": "India"
+        "country": "",
+        "currency": "",
+        "contract_type": "Service Agreement"
     }
 
     # --------------------------------------------------
@@ -141,6 +143,8 @@ def extract_document_metadata(filename):
         metadata["contract_name"] = "Enviri KBC"
         metadata["customer"] = "KBC"
         metadata["language"] = "English"
+        metadata["country"] = "India"
+        metadata["currency"] = "INR"
 
     # --------------------------------------------------
     # CONTRACT : BBC
@@ -151,6 +155,8 @@ def extract_document_metadata(filename):
         metadata["contract_name"] = "Enviri BBC"
         metadata["customer"] = "BBC"
         metadata["language"] = "French"
+        metadata["country"] = "France"
+        metadata["currency"] = "EUR"
 
     # --------------------------------------------------
     # CONTRACT : SS
@@ -161,6 +167,8 @@ def extract_document_metadata(filename):
         metadata["contract_name"] = "Enviri SS"
         metadata["customer"] = "SS"
         metadata["language"] = "Spanish"
+        metadata["country"] = "Spain"
+        metadata["currency"] = "EUR"
 
     else:
 
@@ -168,6 +176,8 @@ def extract_document_metadata(filename):
         metadata["contract_name"] = "Unknown Contract"
         metadata["customer"] = "Unknown"
         metadata["language"] = "Unknown"
+        metadata["country"] = "Unknown"
+        metadata["currency"] = "Unknown"
 
     return metadata
 

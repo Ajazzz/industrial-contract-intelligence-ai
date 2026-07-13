@@ -1,39 +1,50 @@
+from collections import defaultdict
+
+
 def build_context(docs):
 
-    context_parts = []
+    context = []
 
-    for d in docs:
+    for doc in docs:
 
-        metadata = d.get("metadata", {})
+        text = doc.get("content", "").strip()
 
-        content = d.get("content", "").strip()
+        if text:
 
-        if not content:
-            continue
+            context.append(text)
 
-        context_parts.append(
+    return "\n\n".join(context)
 
-f"""
-==================================================
 
-Contract Name : {metadata.get("contract_name", "Unknown")}
+def build_comparison_context(docs):
 
-Customer      : {metadata.get("customer", "Unknown")}
+    grouped = defaultdict(list)
 
-Language      : {metadata.get("language", "Unknown")}
+    for doc in docs:
 
-Source File   : {metadata.get("source", "Unknown")}
+        metadata = doc.get("metadata", {})
 
-Page          : {metadata.get("page", 1)}
+        contract = metadata.get(
+            "contract_name",
+            "Unknown Contract"
+        )
 
-Section       : {metadata.get("section", "GENERAL")}
+        grouped[contract].append(
+            doc.get("content", "")
+        )
 
-Service Type  : {metadata.get("service_type", "general")}
+    sections = []
 
-==================================================
+    for contract, chunks in grouped.items():
 
-{content}
+        sections.append(
+            f"""
+=================================================
+CONTRACT : {contract}
+=================================================
+
+{chr(10).join(chunks)}
 """
         )
 
-    return "\n\n".join(context_parts)
+    return "\n\n".join(sections)

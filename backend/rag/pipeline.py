@@ -1,15 +1,18 @@
 import os
 import json
 import time
-from backend.services.retrieval.comparison import (
-    group_documents_by_contract,
+
+from backend.services.context_builder import (
+    build_context,
     build_comparison_context,
 )
+
+from backend.services.comparison_builder import (
+    build_dynamic_comparison_table
+)
 from groq import Groq
-from backend.services.context_builder import build_context
 from backend.services.prompt_builder import build_prompt
 from backend.services.query_analyzer import analyze_query
-
 from backend.services.retriever import hybrid_retrieve
 
 # ─────────────────────────────────────────────
@@ -345,19 +348,32 @@ def run_rag_pipeline(query: str):
         "latency"
     ]
 
-    # CONTEXT
-    context = build_context(docs)
-
-    # PROMPT
-    #prompt = build_prompt(query, context)
-    
     analysis = analyze_query(query)
 
+    if analysis.compare_all:
+        #comparison_table = build_dynamic_comparison_table(docs)
+    
+        context = build_comparison_context(
+            docs
+        )
+        
+        prompt = build_prompt(
+        analysis=analysis,
+        context=context,
+        #comparison_table=comparison_table,
+        query=query
+)
+    
+    else:
+    
+        context = build_context(docs)
+    
     prompt = build_prompt(
         analysis=analysis,
         context=context,
+        #comparison_table=comparison_table,
         query=query
-)
+    )
 
     generation_start = time.time()
 
@@ -379,6 +395,8 @@ def run_rag_pipeline(query: str):
         .content
         .strip()
     )
+    
+    
 
     total_latency = round(
         (time.time() - total_start) * 1000,
@@ -467,25 +485,25 @@ def stream_rag_pipeline(query: str):
         "latency"
     ]
 
-    if analysis.intent == "comparison":
+    
+    if analysis.compare_all:
 
-        grouped_docs = group_documents_by_contract(
+        context = build_comparison_context(
             docs
         )
 
-        context = build_comparison_context(
-            grouped_docs
-        )
-
     else:
-
+    
         context = build_context(
             docs
         )
     
     
-
-    prompt = build_prompt(query, context)
+    prompt = build_prompt(
+    analysis=analysis,
+    context=context,
+    query=query
+)
 
     stream = client.chat.completions.create(
         model=MODEL_NAME,
@@ -574,7 +592,9 @@ def stream_rag_pipeline(query: str):
                     "embed-multilingual-v3.0",
 
                 "rerankModel":
-                    "rerank-multilingual-v3.0"
+                    "rerank-multilingual-v3.0",
+                "model":
+                    "llama-3.3-70b-versatile",
             },
 
             "latencyMs": total_latency,
