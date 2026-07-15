@@ -54,7 +54,7 @@ export function ChatPanel({
       <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
           <Brain size={15} className="text-emerald-400" />
-          <span className="text-sm font-semibold text-slate-200">Enviri-Contracts Desk</span>
+          <span className="text-sm font-semibold text-slate-200">AI-Contracts Desk</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-mono text-slate-500 uppercase tracking-wider">
@@ -116,9 +116,9 @@ function EmptyState({ onPrompt }: { onPrompt: (p: string) => void }) {
         <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
           <Brain size={22} className="text-emerald-400" />
         </div>
-        <h2 className="text-base font-semibold text-slate-200 mb-1">Enviri-Contracts Desk</h2>
+        <h2 className="text-base font-semibold text-slate-200 mb-1">AI-Contracts Desk</h2>
         <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-          Enterprise Enviri AI-RAG Application for industrial operations contracts, diesel escalation analysis, KPI tracking, invoice review, and operational clause intelligence.
+          Enterprise AI-RAG Application for industrial operations contracts, diesel escalation analysis, KPI tracking, invoice review, and operational clause intelligence.
         </p>
       </div>
 
