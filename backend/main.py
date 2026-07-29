@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +14,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 
 load_dotenv(dotenv_path=ENV_PATH)
+
+import hashlib
+
+cohere_key = os.getenv("COHERE_API_KEY", "")
+groq_key = os.getenv("GROQ_API_KEY", "")
+
+print("=" * 60)
+print("ENV PATH EXISTS:", os.path.exists(ENV_PATH))
+print("COHERE EXISTS:", bool(cohere_key))
+print("COHERE HASH:", hashlib.sha256(cohere_key.encode()).hexdigest()[:12] if cohere_key else "None")
+print("GROQ EXISTS:", bool(groq_key))
+print("=" * 60)
 
 print("INDEX_NAME:", os.getenv("INDEX_NAME"))
 
