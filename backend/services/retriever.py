@@ -389,6 +389,7 @@ def rerank_documents(
         model="rerank-multilingual-v3.0",
         top_n=top_k
     )
+    
 
     reranked_docs = []
 
@@ -708,6 +709,8 @@ def comparison_retrieve(query, contracts):
                 }
             }
         )
+        print("Calling Pinecone...")
+        print("Pinecone finished")
 
         for match in results.get("matches", []):
 
